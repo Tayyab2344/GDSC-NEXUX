@@ -1,0 +1,55 @@
+# Common node_modules
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+**/dist/
+build/
+**/build/
+.next/
+out/
+
+# Environment files
+.env
+.env.local
+.env.*
+**/ .env
+**/ .env.local
+**/ .env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js/Vite cache
+.next
+.vite
+
+# Temporary files
+tmp/
+coverage/
+
+# Prisma
+/backend/prisma/*.db
+/backend/prisma/*.db-journal
+
+# Compiled code
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so

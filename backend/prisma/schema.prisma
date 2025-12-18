@@ -1,0 +1,404 @@
+// schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  FACULTY_HEAD
+  PRESIDENT
+  TEAM_LEAD
+  CO_LEAD
+  TEAM_MEMBER
+  GENERAL_MEMBER
+  GUEST
+}
+
+enum UserStatus {
+  AUTHENTICATED
+  APPLICANT
+  VERIFIED        // Management approved, awaiting tech team assignment
+  MEMBER
+  REJECTED
+  ALUMNI
+}
+
+enum FieldCategory {
+  TECHNICAL
+  NON_TECHNICAL
+}
+
+model User {
+  id            String      @id @default(uuid())
+  email         String      @unique
+  regNo         String?     @unique // University Registration Number
+  membershipId  String?     @unique // Society Membership ID
+  fullName      String
+  avatarUrl     String?
+  googleId      String?     @unique
+  password      String?
+  role          Role        @default(GENERAL_MEMBER)
+  status        UserStatus  @default(AUTHENTICATED)
+
+  teams         TeamMember[]
+  fields        FieldMember[]
+  messages      ChatMessage[]
+  hostedMeetings Meeting[]
+  hostedClasses  Class[]
+  attendance     Attendance[]
+  formsPosted    Form[]
+  submissions    FormSubmission[]
+  announcements  Announcement[]
+  galleryUploads GalleryItem[]    @relation("GalleryUploads")
+  
+  addedResources LearningResource[]
+  ledProjects    Project[]        @relation("ProjectLead")
+  memberProjects Project[]        @relation("ProjectMembers")
+  
+  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime    @default(now())
+}
+
+model Team {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  
+  members     TeamMember[]
+  fields      Field[]
+  chats       Chat[]
+  meetings    Meeting[]
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  userId    String
+  teamId    String
+  role      Role?
+
+  user      User     @relation(fields: [userId], references: [id])
+  team      Team     @relation(fields: [teamId], references: [id])
+  
+  joinedAt  DateTime @default(now())
+
+  @@unique([userId, teamId])
+}
+
+model Field {
+  id          String        @id @default(uuid())
+  name        String
+  category    FieldCategory @default(TECHNICAL)
+  description String?
+  teamId      String
+  team        Team          @relation(fields: [teamId], references: [id])
+  
+  members     FieldMember[]
+  classes     Class[]
+  chats       Chat[]
+  meetings    Meeting[]
+  
+  resources   LearningResource[]
+  projects    Project[]
+  
+  createdAt   DateTime      @default(now())
+}
+
+model FieldMember {
+  id        String   @id @default(uuid())
+  userId    String
+  fieldId   String
+  
+  user      User     @relation(fields: [userId], references: [id])
+  field     Field    @relation(fields: [fieldId], references: [id])
+  
+  joinedAt  DateTime @default(now())
+  
+  @@unique([userId, fieldId])
+}
+
+model Chat {
+  id          String         @id @default(uuid())
+  name        String?
+  isGroup     Boolean        @default(true)
+  visibility  ChatVisibility @default(PUBLIC)
+  
+  teamId      String?
+  team        Team?          @relation(fields: [teamId], references: [id])
+  fieldId     String?
+  field       Field?         @relation(fields: [fieldId], references: [id])
+
+  messages    ChatMessage[]
+  createdAt   DateTime       @default(now())
+}
+
+enum ChatVisibility {
+  PUBLIC         // Everyone can see
+  MEMBERS_ONLY   // MEMBER status and above
+  LEADS_ONLY     // TEAM_LEAD, CO_LEAD, FACULTY_HEAD only
+  HIDDEN         // Only specific roles, not listed to others
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+model GalleryItem {
+  id          String    @id @default(uuid())
+  url         String
+  type        MediaType @default(IMAGE)
+  title       String?
+  eventName   String?
+  location    String?
+  uploadedBy  String
+  uploader    User      @relation("GalleryUploads", fields: [uploadedBy], references: [id])
+  createdAt   DateTime  @default(now())
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  FILE
+}
+
+model ChatMessage {
+  id        String      @id @default(uuid())
+  chatId    String
+  chat      Chat        @relation(fields: [chatId], references: [id])
+  senderId  String
+  sender    User        @relation(fields: [senderId], references: [id])
+  
+  content   String
+  type      MessageType @default(TEXT)
+  fileUrl   String?
+  
+  createdAt DateTime    @default(now())
+}
+
+model Meeting {
+  id          String   @id @default(uuid())
+  title       String
+  scheduledAt DateTime
+  meetingUrl  String
+
+  hostId      String
+  host        User     @relation(fields: [hostId], references: [id])
+  
+  teamId      String?
+  team        Team?    @relation(fields: [teamId], references: [id])
+  fieldId     String?
+  field       Field?   @relation(fields: [fieldId], references: [id])
+  
+  attendance  Attendance[]
+}
+
+model Class {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  scheduledAt DateTime
+  durationMin Int?
+
+  fieldId     String
+  field       Field    @relation(fields: [fieldId], references: [id])
+  
+  instructorId String
+  instructor   User    @relation(fields: [instructorId], references: [id])
+  
+  meetingUrl  String?
+  resources   String?
+  
+  attendance  Attendance[]
+  
+  createdAt   DateTime @default(now())
+}
+
+model Attendance {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  classId     String?
+  class       Class?   @relation(fields: [classId], references: [id])
+  meetingId   String?
+  meeting     Meeting? @relation(fields: [meetingId], references: [id])
+  
+  status      AttendanceStatus @default(PRESENT)
+  joinedAt    DateTime?
+  leftAt      DateTime?
+  
+  // Heartbeat tracking for accurate attendance
+  lastHeartbeat        DateTime?
+  totalMinutesPresent  Int       @default(0)
+  attendancePercentage Int?
+
+  createdAt   DateTime @default(now())
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum FormType {
+  MEMBERSHIP
+  RECRUITMENT
+  EVENT_REGISTRATION
+  FEEDBACK
+  GENERAL
+}
+
+model Form {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  description String?
+  schema      Json
+  type        FormType @default(GENERAL)
+  isPublic    Boolean  @default(false)
+  
+  createdBy   String
+  creator     User     @relation(fields: [createdBy], references: [id])
+  
+  submissions FormSubmission[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FormSubmission {
+  id        String   @id @default(uuid())
+  formId    String
+  form      Form     @relation(fields: [formId], references: [id])
+  
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  
+  data      Json
+  
+  status    SubmissionStatus @default(PENDING)
+  
+  createdAt DateTime @default(now())
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Event {
+  id               String   @id @default(uuid())
+  title            String
+  description      String
+  date             DateTime
+  coverImage       String?
+  registrationLink String?
+  location         String?
+  tags             String[]
+  type             String   @default("Workshop")
+  isVisible        Boolean  @default(true)
+  createdAt        DateTime @default(now())
+}
+
+enum AnnouncementVisibility {
+  PUBLIC
+  MEMBERS_ONLY
+  LEADS_ONLY
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  category  String?
+  coverImage String?
+  visibility AnnouncementVisibility @default(PUBLIC)
+  
+  postedBy  String
+  creator   User     @relation(fields: [postedBy], references: [id])
+  
+  teamId    String?
+  
+  createdAt DateTime @default(now())
+}
+
+
+
+
+model Alumni {
+  id              String   @id @default(uuid())
+  fullName        String
+  graduationYear  Int
+  currentRole     String?
+  company         String?
+  linkedinProfile String?
+  email           String?
+  
+  createdAt       DateTime @default(now())
+}
+
+enum ResourceType {
+  VIDEO
+  ARTICLE
+  DOCUMENTATION
+  COURSE
+}
+
+model LearningResource {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  link        String
+  type        ResourceType @default(ARTICLE)
+  
+  fieldId     String
+  field       Field        @relation(fields: [fieldId], references: [id])
+  
+  addedBy     String
+  adder       User         @relation(fields: [addedBy], references: [id])
+  
+  createdAt   DateTime     @default(now())
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  COMPLETED
+  MAINTENANCE
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  title       String
+  description String?
+  repoLink    String?
+  demoLink    String?
+  status      ProjectStatus @default(PLANNING)
+  
+  fieldId     String
+  field       Field         @relation(fields: [fieldId], references: [id])
+  
+  leadId      String?
+  lead        User?         @relation("ProjectLead", fields: [leadId], references: [id])
+  
+  members     User[]        @relation("ProjectMembers")
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// Update Field to include relations
+// Update User to include relations
