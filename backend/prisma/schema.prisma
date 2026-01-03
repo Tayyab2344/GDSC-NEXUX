@@ -42,6 +42,8 @@ model User {
   avatarUrl     String?
   googleId      String?     @unique
   password      String?
+  resetToken    String?
+  resetTokenExpiry DateTime?
   role          Role        @default(GENERAL_MEMBER)
   status        UserStatus  @default(AUTHENTICATED)
 
@@ -56,9 +58,23 @@ model User {
   announcements  Announcement[]
   galleryUploads GalleryItem[]    @relation("GalleryUploads")
   
+  xp            Int         @default(0)
+  level         Int         @default(1)
+  bio           String?
+  github        String?
+  linkedin      String?
+  
   addedResources LearningResource[]
   ledProjects    Project[]        @relation("ProjectLead")
   memberProjects Project[]        @relation("ProjectMembers")
+  
+  createdQuizzes Quiz[]
+  quizSubmissions QuizSubmission[]
+  badges        UserBadge[]
+  feedbackGiven TenureFeedback[] @relation("FeedbackAuthor")
+  feedbackReceived TenureFeedback[] @relation("FeedbackTarget")
+  
+  notifications Notification[]
   
   updatedAt     DateTime    @updatedAt
   createdAt     DateTime    @default(now())
@@ -107,6 +123,9 @@ model Field {
   
   resources   LearningResource[]
   projects    Project[]
+  quizzes     Quiz[]
+  
+  attendanceThreshold Int @default(75)
   
   createdAt   DateTime      @default(now())
 }
@@ -400,5 +419,95 @@ model Project {
   updatedAt   DateTime      @updatedAt
 }
 
-// Update Field to include relations
-// Update User to include relations
+model Quiz {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  questions   Json     // List of questions with options and correct answers
+  timeLimit   Int?     // in minutes
+  
+  fieldId     String
+  field       Field    @relation(fields: [fieldId], references: [id])
+  
+  creatorId   String
+  creator     User     @relation(fields: [creatorId], references: [id])
+  
+  submissions QuizSubmission[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model QuizSubmission {
+  id        String   @id @default(uuid())
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id])
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  answers   Json     // User's selected answers
+  score     Int
+  passed    Boolean
+  
+  createdAt DateTime @default(now())
+}
+
+model Badge {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  imageUrl    String
+  
+  users       UserBadge[]
+  
+  createdAt   DateTime @default(now())
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id])
+  
+  awardedAt DateTime @default(now())
+}
+
+model TenureFeedback {
+  id            String   @id @default(uuid())
+  content       String
+  isAnonymous   Boolean  @default(true)
+  
+  authorId      String?  // Null if anonymous in the UI sense, but stored for integrity
+  author        User?    @relation("FeedbackAuthor", fields: [authorId], references: [id])
+  
+  targetId      String   // Usually the Team Lead being reviewed
+  target        User     @relation("FeedbackTarget", fields: [targetId], references: [id])
+  
+  rating        Int?     // 1 to 5
+  
+  createdAt     DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  type      String   // 'event', 'team', 'message', 'class', 'achievement', 'announcement'
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+}
+
+model SystemConfig {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}

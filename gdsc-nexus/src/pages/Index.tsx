@@ -7,6 +7,7 @@ import AnnouncementsSection from "@/components/home/AnnouncementsSection";
 import GalleryPreview from "@/components/home/GalleryPreview";
 import CTASection from "@/components/home/CTASection";
 import PublicBanners from "@/components/home/PublicBanners";
+import MembershipModal from "@/components/home/MembershipModal";
 import { usePageTitle } from "@/hooks/use-page-title";
 
 const Index = () => {
@@ -24,6 +25,8 @@ const Index = () => {
         <CTASection />
       </main>
       <Footer />
+      {/* Membership Drive Modal - appears on first visit when drive is active */}
+      <MembershipModal />
     </div>
   );
 };

@@ -36,7 +36,12 @@ import AlumniManagement from "./pages/admin/AlumniManagement";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import SpecializedChats from "./pages/SpecializedChats";
+import TenureFeedback from "./pages/TenureFeedback";
+import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -58,12 +63,15 @@ const App = () => (
             <Route path="/events" element={<Events />} />
             <Route path="/announcements" element={<Announcements />} />
             <Route path="/gallery" element={<Gallery />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="/forms/:slug" element={<PublicForm />} />
 
             {/* Auth Pages */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
 
             {/* Authenticated Routes */}
@@ -78,6 +86,8 @@ const App = () => (
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/leadership/chats" element={<SpecializedChats user={null} />} />
+              <Route path="/tenure/feedback" element={<TenureFeedback />} />
 
               {/* Field Pages */}
               <Route path="/fields/:fieldId/chat" element={<FieldChat />} />

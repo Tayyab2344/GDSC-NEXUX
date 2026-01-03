@@ -20,6 +20,10 @@ import { AnnouncementsModule } from './announcements/announcements.module';
 import { EmailModule } from './email/email.module';
 import { ResourcesModule } from './resources/resources.module';
 import { ProjectsModule } from './projects/projects.module';
+import { AiModule } from './ai/ai.module';
+import { QuizModule } from './quiz/quiz.module';
+import { ConfigService } from './admin/config.service';
+import { ConfigController } from './admin/config.controller';
 
 @Module({
   imports: [
@@ -44,8 +48,10 @@ import { ProjectsModule } from './projects/projects.module';
     EmailModule,
     ResourcesModule,
     ProjectsModule,
+    AiModule,
+    QuizModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, ConfigController],
+  providers: [AppService, ConfigService],
 })
 export class AppModule { }

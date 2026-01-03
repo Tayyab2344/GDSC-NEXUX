@@ -1,7 +1,32 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { API_BASE_URL } from "@/config/api";
+
+interface MembershipDriveConfig {
+  active: boolean;
+  buttonText: string;
+}
 
 const CTASection = () => {
+  const { data: membershipConfig } = useQuery({
+    queryKey: ["config", "membership_drive"],
+    queryFn: async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/admin/config/membership_drive`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data?.value as MembershipDriveConfig | null;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const isDriveActive = membershipConfig?.active ?? false;
+
   return (
     <section className="py-24 relative overflow-hidden">
       {/* Background */}
@@ -30,13 +55,26 @@ const CTASection = () => {
 
           {/* Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button variant="google" size="xl" className="group">
-              Become a Member
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <Button variant="outline" size="xl">
-              Contact Us
-            </Button>
+            {isDriveActive ? (
+              <Link to="/signup">
+                <Button variant="google" size="xl" className="group">
+                  {membershipConfig?.buttonText || "Become a Member"}
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/events">
+                <Button variant="google" size="xl" className="group">
+                  Explore Events
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+            )}
+            <Link to="/contact">
+              <Button variant="outline" size="xl">
+                Contact Us
+              </Button>
+            </Link>
           </div>
 
           {/* Trust indicators */}

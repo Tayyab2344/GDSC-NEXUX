@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '@/config/api';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,13 +32,13 @@ const PublicBanners = () => {
     const queryClient = useQueryClient();
     const token = localStorage.getItem("token");
 
-    // Fetch User to check permissions
+
     const { data: user } = useQuery({
         queryKey: ["user", "profile"],
         queryFn: async () => {
             if (!token) return null;
             try {
-                const res = await fetch("http://localhost:3000/users/profile?includeFields=true", {
+                const res = await fetch(`${API_BASE_URL}/users/profile?includeFields=true`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 if (!res.ok) return null;
@@ -53,12 +54,9 @@ const PublicBanners = () => {
     const { data: banners, isLoading } = useQuery({
         queryKey: ["gallery", "banners"],
         queryFn: async () => {
-            // We fetch all and filter client-side since the backend endpoint is generic
-            // In a real app, we'd want a query param ?type=BANNER
-            const res = await fetch("http://localhost:3000/gallery");
+            const res = await fetch(`${API_BASE_URL}/gallery`);
             if (!res.ok) throw new Error("Failed to fetch banners");
             const items = await res.json() as GalleryItem[];
-            // Filter IN banners based on title tag
             return items.filter(item => item.title === 'BANNER');
         }
     });
@@ -66,7 +64,7 @@ const PublicBanners = () => {
     // Delete Mutation
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            const res = await fetch(`http://localhost:3000/gallery/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/gallery/${id}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -118,60 +116,7 @@ const PublicBanners = () => {
                                             }}
                                         >
                                             <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                    </AlertDialogTrigger>
+                                        </Button>                                    </AlertDialogTrigger>
                                     <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Delete Banner?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                This will permanently remove this banner from the home page.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction
-                                                onClick={() => deleteMutation.mutate(banner.id)}
-                                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                            >
-                                                Delete
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            )}
-
-                            <a
-                                href={banner.location || "#"}
-                                target={banner.location ? "_blank" : "_self"}
-                                rel="noreferrer"
-                                className={`block relative aspect-[2/1] w-full overflow-hidden ${!banner.location ? 'cursor-default' : ''}`}
-                                onClick={(e) => !banner.location && e.preventDefault()}
-                            >
-                                <img
-                                    src={banner.url}
-                                    alt={banner.eventName || "Banner"}
-                                    className="w-full h-full object-cover transition-transform hover:scale-105 duration-500"
-                                />
-                                {(banner.eventName || banner.location) && (
-                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-12">
-                                        <h3 className="text-white font-semibold truncate pr-4">
-                                            {banner.eventName}
-                                        </h3>
-                                        {banner.location && (
-                                            <div className="flex items-center text-white/80 text-xs mt-1">
-                                                <ExternalLink className="w-3 h-3 mr-1" />
-                                                Open Link
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </a>
-                        </Card>
-                    ))}
-                </div>
-            </div>
-        </section>
-    );
-};
-
-export default PublicBanners;
+                                        <AlertDialogHeader>                                             <AlertDialogTitle>Delete Banner?</AlertDialogTitle>                                             <AlertDialogDescription>                                                 This will permanently remove this banner from the home page.                                             </AlertDialogDescription>                                         </AlertDialogHeader>                                         <AlertDialogFooter>                                             <AlertDialogCancel>Cancel</AlertDialogCancel>                                             <AlertDialogAction onClick={() => deleteMutation.mutate(banner.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90"                                             >                                                 Delete                                             </AlertDialogAction>                                         </AlertDialogFooter>                                     </AlertDialogContent>                                 </AlertDialog>)}                              <a href={banner.location || "#"} target={banner.location ? "_blank" : "_self"} rel="noreferrer" className={`block relative aspect-[2/1] w-full overflow-hidden ${!banner.location ? 'cursor-default' : ''}`} onClick={(e) => !banner.location && e.preventDefault()}                             >                                 <img src={banner.url} alt={banner.eventName || "Banner"} className="w-full h-full object-cover transition-transform hover:scale-105 duration-500" />                                 {(banner.eventName || banner.location) && (<div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-12">                                         <h3 className="text-white font-semibold truncate pr-4">                                             {banner.eventName}                                         </h3>                                         {banner.location && (<div className="flex items-center text-white/80 text-xs mt-1">                                                 <ExternalLink className="w-3 h-3 mr-1" />                                                 Open Link                                             </div>)}                                     </div>)}                             </a>                         </Card>))}                 </div>             </div>         </section>);
+}; export default PublicBanners;

@@ -4,9 +4,10 @@ import { FormsController } from './forms.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { UsersModule } from '../users/users.module';
 import { CloudinaryModule } from '../cloudinary/cloudinary.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
-    imports: [PrismaModule, UsersModule, CloudinaryModule],
+    imports: [PrismaModule, UsersModule, CloudinaryModule, MailModule],
     controllers: [FormsController],
     providers: [FormsService],
     exports: [FormsService],

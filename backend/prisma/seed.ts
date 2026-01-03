@@ -116,8 +116,8 @@ async function main() {
         return user;
     };
 
-    const president = await createUser('president@gdsc.dev', 'Muhammad Ali Jinnah', Role.PRESIDENT);
-    const faculty = await createUser('faculty@gdsc.dev', 'Dr. Abdul Qadeer', Role.FACULTY_HEAD);
+    const president = await createUser('president@gdsc.dev', 'Ahmed', Role.PRESIDENT);
+    const faculty = await createUser('faculty@gdsc.dev', 'Ali Sir', Role.FACULTY_HEAD);
 
     // Field Users & Chats
     for (const f of fieldsConfig) {

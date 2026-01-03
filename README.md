@@ -74,7 +74,7 @@ The project is structured as a mono-repository with two main components:
    ```bash
    cd backend
    npm install
-   # Create a .env file based on the environment variables needed (DATABASE_URL, JWT_SECRET, CLOUDINARY_URL)
+   # Create a .env file based on backend/.env.example
    npx prisma generate
    npx prisma migrate dev
    npm run seed # To populate initial roles and data
@@ -85,8 +85,28 @@ The project is structured as a mono-repository with two main components:
    ```bash
    cd ../gdsc-nexus
    npm install
+   # Create a .env file based on gdsc-nexus/.env.example
    npm run dev
    ```
+
+---
+
+## 🚀 Deployment
+
+This monorepo is ready for deployment on **Render** using the provided `render.yaml` Blueprint.
+
+### Steps to Deploy:
+1. Connect your GitHub repository to Render.
+2. Render will detect the `render.yaml` and prompt you to create the services.
+3. Configure the following **Environment Variables** in the Render Dashboard:
+   - **Backend (`gdsc-nexus-backend`)**:
+     - `DATABASE_URL`: Your Neon/PostgreSQL connection string.
+     - `JWT_SECRET`: A secure random string for signing tokens.
+     - `CLOUDINARY_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: Your Cloudinary credentials.
+   - **Frontend (`gdsc-nexus-frontend`)**:
+     - `VITE_API_URL`: Set automatically by the blueprint to your backend's URL.
+
+4. Once deployed, the frontend will automatically connect to the backend via the synchronized `VITE_API_URL`.
 
 ---
 

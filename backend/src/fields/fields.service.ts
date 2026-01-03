@@ -95,5 +95,76 @@ export class FieldsService {
             include: { user: true },
         });
     }
+
+    async getAggregatedAttendance(fieldId: string) {
+        const field = await this.prisma.field.findUnique({
+            where: { id: fieldId },
+            include: {
+                classes: { select: { id: true } },
+                members: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                fullName: true,
+                                email: true,
+                                avatarUrl: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!field) throw new NotFoundException('Field not found');
+
+        const totalClasses = field.classes.length;
+        const classIds = field.classes.map(c => c.id);
+        const threshold = field.attendanceThreshold;
+
+        // Fetch all attendance records for these classes
+        const allAttendance = await this.prisma.attendance.findMany({
+            where: { classId: { in: classIds } }
+        });
+
+        const membersStats = field.members.map(member => {
+            const user = member.user;
+            const userAttendance = allAttendance.filter(a => a.userId === user.id);
+
+            // Present or Late counts as attended
+            const attendedCount = userAttendance.filter(a =>
+                a.status === 'PRESENT' || a.status === 'LATE'
+            ).length;
+
+            const percentage = totalClasses > 0
+                ? Math.round((attendedCount / totalClasses) * 100)
+                : 100;
+
+            return {
+                userId: user.id,
+                fullName: user.fullName,
+                email: user.email,
+                avatarUrl: user.avatarUrl,
+                attendedCount,
+                totalClasses,
+                attendancePercentage: percentage,
+                isEligible: percentage >= threshold
+            };
+        });
+
+        return {
+            fieldId,
+            fieldName: field.name,
+            threshold,
+            members: membersStats
+        };
+    }
+
+    async updateThreshold(fieldId: string, threshold: number) {
+        return this.prisma.field.update({
+            where: { id: fieldId },
+            data: { attendanceThreshold: threshold }
+        });
+    }
 }
 

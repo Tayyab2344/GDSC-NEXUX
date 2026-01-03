@@ -1,14 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
+import { BadgesService } from '../users/badges.service';
+import { MailService } from '../mail/mail.service';
 import { SubmissionStatus, FormType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class FormsService {
     constructor(
         private prisma: PrismaService,
-        private usersService: UsersService
+        private usersService: UsersService,
+        private badgesService: BadgesService,
+        private mailService: MailService
     ) { }
 
     async create(data: { title: string; slug: string; description?: string; schema: any; isPublic?: boolean; type?: FormType; createdBy: string }) {
@@ -256,6 +261,13 @@ export class FormsService {
             data: { status: SubmissionStatus.APPROVED }
         });
 
+        // Award membership badge
+        try {
+            await this.badgesService.awardBadge(user.id, 'GDSC Member');
+        } catch (e) {
+            console.warn(`Failed to award membership badge to user ${user.id}:`, e);
+        }
+
         return { submissionId: submission.id, userId: user.id, status: 'APPROVED', membershipId };
     }
 
@@ -288,6 +300,25 @@ export class FormsService {
             where: { id: submission.id },
             data: { status: SubmissionStatus.APPROVED }
         });
+
+        // Award Team Lead badge
+        try {
+            await this.badgesService.awardBadge(user.id, 'Team Lead');
+        } catch (e) {
+            console.warn(`Failed to award lead badge to user ${user.id}:`, e);
+        }
+
+        // Generate reset token and send email
+        try {
+            const token = crypto.randomBytes(32).toString('hex');
+            const expiry = new Date();
+            expiry.setHours(expiry.getHours() + 24); // 24h expiry
+
+            await this.usersService.updateResetToken(user.id, token, expiry);
+            await this.mailService.sendPasswordReset(user.email, token);
+        } catch (e) {
+            console.warn(`Failed to send password reset email to new lead ${user.email}:`, e);
+        }
 
         return { submissionId: submission.id, userId: user.id, status: 'APPROVED', role: 'TEAM_LEAD', membershipId };
     }

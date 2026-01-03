@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '@/config/api';
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ const CreateClassDialog = ({ fieldId }: CreateClassDialogProps) => {
 
         try {
             const token = localStorage.getItem("token");
-            const res = await fetch("http://localhost:3000/classes", {
+            const res = await fetch(`${API_BASE_URL}/classes`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

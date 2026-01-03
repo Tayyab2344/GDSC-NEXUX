@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { usePageTitle } from "@/hooks/use-page-title";
+import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "@/config/api";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
@@ -23,14 +24,13 @@ interface Announcement {
 }
 
 const Announcements = () => {
-  usePageTitle("Announcements");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
 
   const { data: announcements, isLoading } = useQuery({
     queryKey: ["announcements"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:3000/announcements", {
+      const res = await fetch(`${API_BASE_URL}/announcements`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`
         }

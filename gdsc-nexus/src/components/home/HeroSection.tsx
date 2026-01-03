@@ -1,8 +1,35 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play, Users, Calendar, Award } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { API_BASE_URL } from "@/config/api";
+
+interface MembershipDriveConfig {
+  active: boolean;
+  title: string;
+  message: string;
+  buttonText: string;
+  bannerText: string;
+}
 
 const HeroSection = () => {
+  const { data: membershipConfig } = useQuery({
+    queryKey: ["config", "membership_drive"],
+    queryFn: async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/admin/config/membership_drive`);
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data?.value as MembershipDriveConfig | null;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  const isDriveActive = membershipConfig?.active ?? false;
+
   const stats = [
     { icon: Users, value: "500+", label: "Active Members" },
     { icon: Calendar, value: "50+", label: "Events Hosted" },
@@ -25,11 +52,15 @@ const HeroSection = () => {
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8 animate-fade-in">
-            <span className="w-2 h-2 rounded-full bg-google-green animate-pulse" />
-            <span className="text-sm font-medium text-foreground">Now accepting new members for 2024</span>
-          </div>
+          {/* Badge - Only show when membership drive is active */}
+          {isDriveActive && (
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8 animate-fade-in">
+              <span className="w-2 h-2 rounded-full bg-google-green animate-pulse" />
+              <span className="text-sm font-medium text-foreground">
+                {membershipConfig?.bannerText || ""}
+              </span>
+            </div>
+          )}
 
           {/* Main heading */}
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6 animate-fade-in" style={{ animationDelay: "100ms" }}>
@@ -45,12 +76,21 @@ const HeroSection = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16 animate-fade-in" style={{ animationDelay: "300ms" }}>
-            <Link to="/signup">
-              <Button variant="google" size="xl" className="group">
-                Join the Community
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
+            {isDriveActive ? (
+              <Link to="/signup">
+                <Button variant="google" size="xl" className="group">
+                  {membershipConfig?.buttonText || "Join the Community"}
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/events">
+                <Button variant="google" size="xl" className="group">
+                  Explore Our Events
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+            )}
             <Button variant="outline" size="xl" className="gap-2">
               <Play className="w-5 h-5" />
               Watch Overview

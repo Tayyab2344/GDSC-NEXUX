@@ -1,253 +1,320 @@
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
 import { usePageTitle } from "@/hooks/use-page-title";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
 import {
   Edit, Mail, Calendar, Users, BookOpen, Award, CheckCircle,
-  Code, Smartphone, Brain
+  Github, Linkedin, Globe, Camera, Loader2
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useState, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { API_BASE_URL } from "@/config/api";
+import { toast } from "sonner";
 
 const Profile = () => {
-  usePageTitle("Profile");
-  const user = {
-    name: "John Doe",
-    email: "john.doe@university.edu",
-    avatar: "",
-    role: "Member",
-    joinedAt: "October 2024",
-    university: "State University",
-    major: "Computer Science",
-    year: "3rd Year",
+  usePageTitle("My Profile");
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const token = localStorage.getItem("token");
+
+  const { data: user, isLoading, error } = useQuery({
+    queryKey: ["user", "profile"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE_URL}/users/profile?includeFields=true`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+        throw new Error("Unauthorized");
+      }
+      if (!res.ok) throw new Error("Failed to fetch profile");
+      return res.json();
+    },
+    enabled: !!token
+  });
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/profile/avatar`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (res.ok) {
+        toast.success("Profile picture updated!");
+        queryClient.invalidateQueries({ queryKey: ["user", "profile"] });
+      } else {
+        toast.error("Failed to upload image");
+      }
+    } catch (err) {
+      toast.error("Error uploading image");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const teams = [
-    { name: "Web Development", role: "Member", icon: Code, color: "google-blue" },
-    { name: "Mobile Development", role: "Member", icon: Smartphone, color: "google-green" },
-  ];
+  if (isLoading) return <div className="flex h-screen items-center justify-center">Loading profile...</div>;
+  if (error || !user) return <div className="flex h-screen items-center justify-center">Failed to load profile.</div>;
 
-  const fields = [
-    { name: "Frontend Development", team: "Web Development", progress: 65 },
-    { name: "React Native", team: "Mobile Development", progress: 40 },
-  ];
-
-  const stats = {
-    classesAttended: 24,
-    classesTotal: 30,
-    eventsAttended: 8,
-    achievements: 5,
-  };
-
-  const achievements = [
-    { name: "First Class", description: "Attended your first class", icon: BookOpen },
-    { name: "Team Player", description: "Joined 2 teams", icon: Users },
-    { name: "Rising Star", description: "Completed 10 classes", icon: Award },
+  const skills = [
+    { name: "Frontend", color: "bg-google-blue", value: 85 },
+    { name: "Backend", color: "bg-google-red", value: 70 },
+    { name: "UI/UX", color: "bg-google-yellow", value: 90 },
+    { name: "AI/ML", color: "bg-google-green", value: 45 },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <main className="pt-24 pb-16">
-        <div className="container mx-auto px-4">
-          {/* Profile Header */}
-          <Card className="mb-8">
-            <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row items-start gap-6">
-                <Avatar className="w-24 h-24">
-                  <AvatarImage src={user.avatar} />
-                  <AvatarFallback className="text-2xl bg-google-blue text-white">
-                    {user.name.split(" ").map(n => n[0]).join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h1 className="text-2xl font-bold text-foreground">{user.name}</h1>
-                      <p className="text-muted-foreground flex items-center gap-2">
-                        <Mail className="w-4 h-4" />
-                        {user.email}
-                      </p>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                        <span>{user.university}</span>
-                        <span>•</span>
-                        <span>{user.major}</span>
-                        <span>•</span>
-                        <span>{user.year}</span>
+    <div className="pb-10">
+      <div className="container mx-auto px-4 max-w-7xl">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+          {/* LEFT COLUMN: Identity & Quick Stats */}
+          <div className="lg:col-span-4 space-y-8">
+
+            {/* Digital ID Card */}
+            <div className="relative group perspective-1000">
+              <div className="relative h-64 w-full rounded-3xl bg-gradient-to-br from-[#1a1c1e] to-[#0d0e10] p-6 shadow-2xl border border-white/10 overflow-hidden transition-all duration-500 group-hover:shadow-glow-blue group-hover:-translate-y-2">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-google-blue/20 rounded-full blur-3xl -mr-16 -mt-16" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-google-red/20 rounded-full blur-3xl -ml-16 -mb-16" />
+
+                <div className="relative flex justify-between items-start mb-8">
+                  <div className="flex gap-4 items-center">
+                    <div className="relative group/avatar">
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-google-blue to-google-blue/50 p-0.5 shadow-lg overflow-hidden">
+                        <Avatar className="w-full h-full rounded-[14px]">
+                          <AvatarImage src={user.avatarUrl} className="object-cover" />
+                          <AvatarFallback className="bg-black text-xl font-bold text-white">
+                            {user.fullName?.[0] || "U"}
+                          </AvatarFallback>
+                        </Avatar>
                       </div>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-[14px] opacity-0 group-hover/avatar:opacity-100 transition-opacity disabled:opacity-100"
+                      >
+                        {isUploading ? (
+                          <Loader2 className="w-6 h-6 text-white animate-spin" />
+                        ) : (
+                          <Camera className="w-6 h-6 text-white" />
+                        )}
+                      </button>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                      />
                     </div>
-                    <Link to="/settings">
-                      <Button variant="outline" className="gap-2">
-                        <Edit className="w-4 h-4" />
-                        Edit Profile
-                      </Button>
-                    </Link>
+                    <div>
+                      <h3 className="text-white font-bold text-lg tracking-tight">{user.fullName}</h3>
+                      <Badge variant="secondary" className="bg-white/5 border-white/10 text-[10px] uppercase font-bold tracking-widest text-google-blue">
+                        {user.role?.replace('_', ' ')}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4 mt-4">
-                    <Badge className="bg-google-green/10 text-google-green border-google-green/20">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Active Member
-                    </Badge>
-                    <span className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      Joined {user.joinedAt}
-                    </span>
+                  <div className="text-right flex flex-col items-end">
+                    <span className="text-[10px] font-bold text-white/40 uppercase">LVL {Math.floor((user.stats?.xp || 0) / 500) + 1}</span>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Teams */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    My Teams
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    {teams.map((team, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center gap-4 p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors"
-                      >
-                        <div className={`w-12 h-12 rounded-xl bg-${team.color}/10 flex items-center justify-center`}>
-                          <team.icon className={`w-6 h-6 text-${team.color}`} />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-foreground">{team.name}</h4>
-                          <Badge variant="secondary" className="text-xs">{team.role}</Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Field Progress */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="w-5 h-5" />
-                    Learning Progress
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {fields.map((field, index) => (
-                      <div key={index}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div>
-                            <h4 className="font-medium text-foreground">{field.name}</h4>
-                            <p className="text-sm text-muted-foreground">{field.team}</p>
-                          </div>
-                          <span className="text-sm font-medium text-foreground">{field.progress}%</span>
-                        </div>
-                        <Progress value={field.progress} className="h-2" />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Achievements */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Award className="w-5 h-5" />
-                    Achievements
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid sm:grid-cols-3 gap-4">
-                    {achievements.map((achievement, index) => (
-                      <div
-                        key={index}
-                        className="text-center p-4 rounded-lg border border-border"
-                      >
-                        <div className="w-12 h-12 rounded-full bg-google-yellow/10 flex items-center justify-center mx-auto mb-3">
-                          <achievement.icon className="w-6 h-6 text-google-yellow" />
-                        </div>
-                        <h4 className="font-medium text-foreground text-sm">{achievement.name}</h4>
-                        <p className="text-xs text-muted-foreground mt-1">{achievement.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Stats */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Activity Summary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 mb-6">
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-muted-foreground">Classes Attended</span>
-                      <span className="font-medium text-foreground">
-                        {stats.classesAttended}/{stats.classesTotal}
-                      </span>
+                    <p className="text-[9px] uppercase font-bold text-white/30 tracking-widest mb-1">MEMBER ID</p>
+                    <p className="text-sm font-mono text-white/80">#GDSC-2024-0492</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] uppercase font-bold text-white/30 tracking-widest mb-1">TENURE</p>
+                    <p className="text-sm font-mono text-white/80">FALL 2024</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-end">
+                  <div className="flex gap-2">
+                    <Github className="w-4 h-4 text-white/40 hover:text-white cursor-pointer transition-colors" />
+                    <Linkedin className="w-4 h-4 text-white/40 hover:text-white cursor-pointer transition-colors" />
+                    <Globe className="w-4 h-4 text-white/40 hover:text-white cursor-pointer transition-colors" />
+                  </div>
+                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=GDSC-TM-0492&color=ffffff&bgcolor=00000000" className="w-10 h-10 opacity-60 invert" alt="QR" />
+                </div>
+              </div>
+            </div>
+
+            {/* XP & Level Progression */}
+            <Card className="glass-card overflow-hidden">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    Growth Progress
+                  </CardTitle>
+                  <Badge variant="outline" className="text-google-green border-google-green/20">Elite</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-xs mb-2">
+                    <span className="text-muted-foreground font-medium">XP: {user.stats?.xp || 0} / {(Math.floor((user.stats?.xp || 0) / 500) + 1) * 500}</span>
+                    <span className="text-google-blue font-bold">{Math.round(((user.stats?.xp || 0) % 500) / 5)}%</span>
+                  </div>
+                  <div className="h-2 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                    <div className="h-full bg-gradient-to-r from-google-blue to-google-green shadow-glow-blue transition-all duration-1000" style={{ width: `${Math.round(((user.stats?.xp || 0) % 500) / 5)}%` }} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Rank</p>
+                    <p className="font-bold text-lg">Member</p>
+                  </div>
+                  <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold">Events</p>
+                    <p className="font-bold text-lg">{user.stats?.events || 0}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Member Onboarding */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-sm font-bold">Member Onboarding</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[
+                  { label: "Complete Profile", done: true },
+                  { label: "Join Field Chat", done: true },
+                  { label: "First Quiz Passed", done: false },
+                  { label: "Verify Identity", done: false }
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center ${item.done ? 'bg-google-green text-white' : 'border-2 border-white/10'}`}>
+                      {item.done && <CheckCircle className="w-3 h-3" />}
                     </div>
-                    <Progress value={(stats.classesAttended / stats.classesTotal) * 100} className="h-2" />
+                    <span className={`text-xs font-medium ${item.done ? 'text-muted-foreground line-through' : ''}`}>{item.label}</span>
                   </div>
-                  <div className="flex justify-between py-2 border-t border-border">
-                    <span className="text-muted-foreground">Events Attended</span>
-                    <span className="font-medium text-foreground">{stats.eventsAttended}</span>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* RIGHT COLUMN: AI & Main Details */}
+          <div className="lg:col-span-8 space-y-8">
+
+            {/* AI Career Compass */}
+            <Card className="glass-card relative overflow-hidden border-google-blue/20">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-2xl font-bold flex items-center gap-2">
+                      AI Career Compass
+                    </CardTitle>
+                    <CardDescription>Hyper-personalized roadmap based on your field activity</CardDescription>
                   </div>
-                  <div className="flex justify-between py-2 border-t border-border">
-                    <span className="text-muted-foreground">Achievements</span>
-                    <span className="font-medium text-foreground">{stats.achievements}</span>
+                  <Button
+                    className="bg-google-blue/10 text-google-blue hover:bg-google-blue/20 border border-google-blue/20"
+                  >
+                    Recalculate Path
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="p-6 rounded-3xl bg-google-blue/5 border border-google-blue/10">
+                    <h4 className="font-bold text-google-blue flex items-center gap-2 mb-3">
+                      Recommended Focus
+                    </h4>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      Based on your activity, we recommend focus on core technologies within your assigned fields.
+                    </p>
                   </div>
-                  <div className="flex justify-between py-2 border-t border-border">
-                    <span className="text-muted-foreground">Teams Joined</span>
-                    <span className="font-medium text-foreground">{teams.length}</span>
-                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Skills Analysis */}
+            <div className="grid md:grid-cols-2 gap-8">
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    Skills Matrix
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {skills.map((skill, i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="flex justify-between text-xs font-bold">
+                        <span>{skill.name}</span>
+                        <span>{skill.value}%</span>
+                      </div>
+                      <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                        <div className={`h-full ${skill.color} transition-all duration-1000`} style={{ width: `${skill.value}%` }} />
+                      </div>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
 
-              {/* Quick Actions */}
-              <Card>
+              {/* smart Badge Collection */}
+              <Card className="glass-card">
                 <CardHeader>
-                  <CardTitle className="text-lg">Quick Actions</CardTitle>
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    Achievement Badges
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  <Link to="/teams" className="block">
-                    <Button variant="outline" className="w-full justify-start gap-2">
-                      <Users className="w-4 h-4" />
-                      Explore Teams
-                    </Button>
-                  </Link>
-                  <Link to="/events" className="block">
-                    <Button variant="outline" className="w-full justify-start gap-2">
-                      <Calendar className="w-4 h-4" />
-                      View Events
-                    </Button>
-                  </Link>
-                  <Link to="/settings" className="block">
-                    <Button variant="outline" className="w-full justify-start gap-2">
-                      <Edit className="w-4 h-4" />
-                      Edit Settings
-                    </Button>
-                  </Link>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-4">
+                    {[
+                      { label: 'Verified' },
+                      { label: 'Top Scorer' },
+                      { label: 'Pro Lead' },
+                    ].map((badge, i) => (
+                      <div key={i} className="flex flex-col items-center gap-2 group cursor-help">
+                        <div className={`w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center transition-all group-hover:scale-110 group-hover:rotate-6`}>
+                          <Award className="w-8 h-8 text-google-blue" />
+                        </div>
+                        <span className="text-[10px] font-bold text-center leading-tight opacity-60">{badge.label}</span>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Bio & Social */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold">Professional Bio</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Passionate full-stack developer with a focus on high-end HCI and AI integration. Currently leading the technical roadmap for GDSC-Nexus and exploring the intersection of generative AI and user interfaces.
+                </p>
+                <div className="flex gap-4 mt-6">
+                  <Button size="sm" variant="outline" asChild className="gap-2 rounded-xl">
+                    <Link to="/settings" className="flex items-center gap-2">
+                      <Edit className="w-4 h-4" /> Update Bio
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
           </div>
         </div>
-      </main>
-      <Footer />
+      </div>
     </div>
   );
 };

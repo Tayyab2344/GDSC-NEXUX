@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role, UserStatus } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -31,6 +32,41 @@ export class UsersService {
                 role: Role.GENERAL_MEMBER,
                 status: UserStatus.AUTHENTICATED,
             },
+        });
+    }
+
+    async updateProfile(userId: string, data: { fullName?: string; email?: string; password?: string }) {
+        if (data.email) {
+            const existingUser = await this.prisma.user.findFirst({
+                where: {
+                    email: data.email,
+                    id: { not: userId }
+                }
+            });
+            if (existingUser) {
+                throw new BadRequestException('Email is already in use by another account.');
+            }
+        }
+
+        const updateData: any = {};
+        if (data.fullName) updateData.fullName = data.fullName;
+        if (data.email) updateData.email = data.email;
+
+        if (data.password) {
+            const salt = await bcrypt.genSalt();
+            updateData.password = await bcrypt.hash(data.password, salt);
+        }
+
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: updateData,
+        });
+    }
+
+    async updateAvatar(userId: string, avatarUrl: string) {
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: { avatarUrl },
         });
     }
 
@@ -149,25 +185,85 @@ export class UsersService {
     }
 
     async getAdminStats() {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
         const totalUsers = await this.prisma.user.count();
-        const activeTeams = await this.prisma.team.count(); // actually fields often represent teams in this context
-        const eventsThisMonth = await this.prisma.event.count(); // Assuming Event model exists and populated or 0
+        const activeTeams = await this.prisma.field.count();
+        const eventsThisMonth = await this.prisma.event.count({
+            where: {
+                date: { gte: startOfMonth }
+            }
+        });
         const messagesToday = await this.prisma.chatMessage.count({
             where: {
-                createdAt: {
-                    gte: new Date(new Date().setHours(0, 0, 0, 0))
-                }
+                createdAt: { gte: startOfToday }
             }
+        });
+
+        // Member growth over 6 months
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+        const growth = await this.prisma.user.groupBy({
+            by: ['createdAt'],
+            _count: { id: true },
+            where: { createdAt: { gte: sixMonthsAgo } },
+        });
+
+        // Field distribution
+        const fieldDist = await this.prisma.field.findMany({
+            include: { _count: { select: { members: true } } }
+        });
+
+        // Attendance trends (simplified)
+        const attendanceTrends = await this.prisma.attendance.groupBy({
+            by: ['createdAt'],
+            _count: { id: true },
+            where: { createdAt: { gte: sixMonthsAgo } }
         });
 
         return {
             totalUsers,
             activeTeams,
             eventsThisMonth,
-            messagesToday
+            messagesToday,
+            summary: { totalUsers, activeFields: activeTeams, totalEvents: eventsThisMonth },
+            growth: growth.map(g => ({ date: g.createdAt, count: g._count.id })),
+            fieldDistribution: fieldDist.map(f => ({ name: f.name, value: f._count.members })),
+            attendance: attendanceTrends.map(a => ({ date: a.createdAt, count: a._count.id }))
         };
     }
 
+    async getLeadStats(fieldId: string) {
+        const field: any = await this.prisma.field.findUnique({
+            where: { id: fieldId },
+            include: {
+                members: {
+                    include: { user: true },
+                    take: 10,
+                    orderBy: { user: { xp: 'desc' } }
+                }
+            }
+        });
+
+        if (!field) throw new NotFoundException('Field not found');
+
+        const memberCount = await this.prisma.fieldMember.count({ where: { fieldId } });
+        const quizCount = await this.prisma.quiz.count({ where: { fieldId } });
+        const resourceCount = await this.prisma.learningResource.count({ where: { fieldId } });
+
+        return {
+            stats: {
+                members: memberCount,
+                quizzes: quizCount,
+                resources: resourceCount
+            },
+            topMembers: field.members.map((m: any) => m.user),
+            engagement: []
+        }
+    }
     async updateRole(userId: string, role: Role) {
         return this.prisma.user.update({
             where: { id: userId },
@@ -194,10 +290,6 @@ export class UsersService {
         });
     }
 
-    /**
-     * Generate a simple, easy-to-remember membership ID
-     * Format: 001, 002, 003, ...
-     */
     async generateMembershipId(): Promise<string> {
         const lastMember = await this.prisma.user.findFirst({
             where: { membershipId: { not: null } },
@@ -214,9 +306,6 @@ export class UsersService {
         return nextNum.toString().padStart(3, '0');
     }
 
-    /**
-     * Assign a new membership ID to a user and update their status to MEMBER
-     */
     async assignMembershipId(userId: string): Promise<string> {
         const membershipId = await this.generateMembershipId();
         await this.prisma.user.update({
@@ -230,9 +319,6 @@ export class UsersService {
         return membershipId;
     }
 
-    /**
-     * Add user to a field (and its team) as a member
-     */
     async addUserToField(userId: string, fieldId: string) {
         const field = await this.prisma.field.findUnique({
             where: { id: fieldId },
@@ -240,7 +326,6 @@ export class UsersService {
         });
         if (!field) throw new NotFoundException('Field not found');
 
-        // Add to team if not already
         const existingTeamMember = await this.prisma.teamMember.findUnique({
             where: { userId_teamId: { userId, teamId: field.teamId } }
         });
@@ -250,7 +335,6 @@ export class UsersService {
             });
         }
 
-        // Add to field if not already
         const existingFieldMember = await this.prisma.fieldMember.findUnique({
             where: { userId_fieldId: { userId, fieldId } }
         });
@@ -261,5 +345,25 @@ export class UsersService {
         }
 
         return { teamId: field.teamId, fieldId };
+    }
+
+    async updateResetToken(userId: string, token: string, expiry: Date) {
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: { resetToken: token, resetTokenExpiry: expiry }
+        });
+    }
+
+    async findByResetToken(token: string) {
+        return this.prisma.user.findFirst({
+            where: { resetToken: token }
+        });
+    }
+
+    async updatePassword(userId: string, hash: string) {
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: { password: hash, resetToken: null, resetTokenExpiry: null }
+        });
     }
 }

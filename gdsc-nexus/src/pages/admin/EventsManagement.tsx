@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '@/config/api';
 import { useState, useRef } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
@@ -43,7 +44,7 @@ const EventsManagement = () => {
             if (formData.registrationLink) body.append("registrationLink", formData.registrationLink);
             if (file) body.append("file", file);
 
-            const res = await fetch("http://localhost:3000/events", {
+            const res = await fetch(`${API_BASE_URL}/events`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${token}`
@@ -109,7 +110,6 @@ const EventsManagement = () => {
                                 </div>
                             </div>
 
-                            {/* Image Upload */}
                             <div className="space-y-2">
                                 <Label>Cover Image</Label>
                                 <div

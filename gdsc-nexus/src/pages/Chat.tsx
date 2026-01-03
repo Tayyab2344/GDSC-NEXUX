@@ -24,6 +24,7 @@ import { jwtDecode } from "jwt-decode"; // You might need to install this or par
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { API_BASE_URL } from "@/config/api";
 
 interface ChatRoom {
   id: string;
@@ -90,7 +91,7 @@ const Chat = () => {
   useEffect(() => {
     if (!token || !userId) return;
 
-    const newSocket = io("http://localhost:3000/chat", {
+    const newSocket = io(API_BASE_URL + "/chat", {
       transports: ["websocket"],
       query: { token } // Optional, if backend supports handshake auth, but we use 'authenticate' event
     });
@@ -111,7 +112,7 @@ const Chat = () => {
   const { data: channels, isLoading: isChannelsLoading } = useQuery({
     queryKey: ["chat", "rooms"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:3000/chat/rooms", {
+      const res = await fetch(`${API_BASE_URL}/chat/rooms`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error("Failed to fetch rooms");
@@ -138,7 +139,7 @@ const Chat = () => {
     // Initial fetch of messages for this room (API)
     const fetchMessages = async () => {
       try {
-        const res = await fetch(`http://localhost:3000/chat/${activeChannelId}/messages`, {
+        const res = await fetch(`${API_BASE_URL}/chat/${activeChannelId}/messages`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
@@ -233,7 +234,7 @@ const Chat = () => {
 
     setIsUploading(true);
     try {
-      const res = await fetch("http://localhost:3000/chat/upload", {
+      const res = await fetch(`${API_BASE_URL}/chat/upload`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData

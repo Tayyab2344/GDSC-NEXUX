@@ -2,48 +2,48 @@ import { Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 
 interface MailOptions {
-    to: string;
-    subject: string;
-    html: string;
+  to: string;
+  subject: string;
+  html: string;
 }
 
 @Injectable()
 export class MailService {
-    private transporter: nodemailer.Transporter;
+  private transporter: nodemailer.Transporter;
 
-    constructor() {
-        this.transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST || 'smtp.gmail.com',
-            port: parseInt(process.env.SMTP_PORT || '587'),
-            secure: false,
-            auth: {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS,
-            },
-        });
+  constructor() {
+    this.transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+  }
+
+  async sendMail(options: MailOptions) {
+    try {
+      await this.transporter.sendMail({
+        from: process.env.SMTP_FROM || '"Google Society" <noreply@googlesociety.com>',
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Mail send error:', error);
+      return { success: false, error };
     }
+  }
 
-    async sendMail(options: MailOptions) {
-        try {
-            await this.transporter.sendMail({
-                from: process.env.SMTP_FROM || '"Google Society" <noreply@googlesociety.com>',
-                to: options.to,
-                subject: options.subject,
-                html: options.html,
-            });
-            return { success: true };
-        } catch (error) {
-            console.error('Mail send error:', error);
-            return { success: false, error };
-        }
-    }
-
-    // Email Templates
-    async sendApplicationReceived(email: string, name: string) {
-        return this.sendMail({
-            to: email,
-            subject: 'Application Received - Google Society',
-            html: `
+  // Email Templates
+  async sendApplicationReceived(email: string, name: string) {
+    return this.sendMail({
+      to: email,
+      subject: 'Application Received - Google Society',
+      html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #4285F4, #34A853); padding: 30px; text-align: center;">
             <h1 style="color: white; margin: 0;">Google Society</h1>
@@ -68,14 +68,14 @@ export class MailService {
           </div>
         </div>
       `,
-        });
-    }
+    });
+  }
 
-    async sendApplicationApproved(email: string, name: string) {
-        return this.sendMail({
-            to: email,
-            subject: '🎉 Welcome to the Google Society!',
-            html: `
+  async sendApplicationApproved(email: string, name: string) {
+    return this.sendMail({
+      to: email,
+      subject: '🎉 Welcome to the Google Society!',
+      html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #34A853, #4285F4); padding: 30px; text-align: center;">
             <h1 style="color: white; margin: 0;">Welcome! 🎉</h1>
@@ -96,14 +96,14 @@ export class MailService {
           </div>
         </div>
       `,
-        });
-    }
+    });
+  }
 
-    async sendApplicationRejected(email: string, name: string, reason?: string) {
-        return this.sendMail({
-            to: email,
-            subject: 'Application Update - Google Society',
-            html: `
+  async sendApplicationRejected(email: string, name: string, reason?: string) {
+    return this.sendMail({
+      to: email,
+      subject: 'Application Update - Google Society',
+      html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #333; padding: 30px; text-align: center;">
             <h1 style="color: white; margin: 0;">Google Society</h1>
@@ -120,14 +120,14 @@ export class MailService {
           </div>
         </div>
       `,
-        });
-    }
+    });
+  }
 
-    async sendClassReminder(email: string, name: string, classTitle: string, scheduledAt: Date) {
-        return this.sendMail({
-            to: email,
-            subject: `📚 Class Reminder: ${classTitle}`,
-            html: `
+  async sendClassReminder(email: string, name: string, classTitle: string, scheduledAt: Date) {
+    return this.sendMail({
+      to: email,
+      subject: `📚 Class Reminder: ${classTitle}`,
+      html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #4285F4; padding: 30px; text-align: center;">
             <h1 style="color: white; margin: 0;">Class Reminder</h1>
@@ -153,14 +153,14 @@ export class MailService {
           </div>
         </div>
       `,
-        });
-    }
+    });
+  }
 
-    async sendEventAnnouncement(email: string, name: string, eventTitle: string, eventDate: Date, description: string) {
-        return this.sendMail({
-            to: email,
-            subject: `🎪 New Event: ${eventTitle}`,
-            html: `
+  async sendEventAnnouncement(email: string, name: string, eventTitle: string, eventDate: Date, description: string) {
+    return this.sendMail({
+      to: email,
+      subject: `🎪 New Event: ${eventTitle}`,
+      html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #FBBC05, #EA4335); padding: 30px; text-align: center;">
             <h1 style="color: white; margin: 0;">New Event!</h1>
@@ -181,6 +181,35 @@ export class MailService {
           </div>
         </div>
       `,
-        });
-    }
+    });
+  }
+
+  async sendPasswordReset(email: string, token: string) {
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    return this.sendMail({
+      to: email,
+      subject: '🔐 Password Reset Request - Google Society',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #EA4335; padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Password Reset</h1>
+            </div>
+            <div style="padding: 30px; background: #f9f9f9;">
+            <p style="color: #666; line-height: 1.6;">
+                We received a request to reset your password. If you didn't make this request, you can safely ignore this email.
+            </p>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetLink}" style="background: #EA4335; color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; font-weight: bold;">
+                Reset Password
+                </a>
+            </div>
+            <p style="color: #999; font-size: 12px; margin-top: 20px;">
+                Or copy and paste this link into your browser:<br>
+                <a href="${resetLink}" style="color: #4285F4;">${resetLink}</a>
+            </p>
+            </div>
+        </div>
+        `,
+    });
+  }
 }

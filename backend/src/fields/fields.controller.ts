@@ -60,5 +60,17 @@ export class FieldsController {
     async getFieldMembers(@Param('id') fieldId: string) {
         return this.fieldsService.getFieldMembers(fieldId);
     }
+
+    @UseGuards(JwtAuthGuard)
+    @Get(':id/attendance')
+    async getAggregatedAttendance(@Param('id') id: string) {
+        return this.fieldsService.getAggregatedAttendance(id);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Put(':id/threshold')
+    async updateThreshold(@Param('id') id: string, @Body('threshold') threshold: number) {
+        return this.fieldsService.updateThreshold(id, threshold);
+    }
 }
 
