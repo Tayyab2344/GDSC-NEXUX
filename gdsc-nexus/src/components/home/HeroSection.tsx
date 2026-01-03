@@ -52,15 +52,6 @@ const HeroSection = () => {
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Badge - Only show when membership drive is active */}
-          {isDriveActive && (
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8 animate-fade-in">
-              <span className="w-2 h-2 rounded-full bg-google-green animate-pulse" />
-              <span className="text-sm font-medium text-foreground">
-                {membershipConfig?.bannerText || ""}
-              </span>
-            </div>
-          )}
 
           {/* Main heading */}
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6 animate-fade-in" style={{ animationDelay: "100ms" }}>
